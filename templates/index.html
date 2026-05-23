@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Metadata correlation analysis &amp; insider threat overview{% endblock %}
+
+{% block content %}
+<div class="content-area">
+
+  <!-- ── Stat row ──────────────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-indigo"><i class="bi bi-people-fill"></i></div>
+        <div>
+          <div class="stat-value">{{ stats.n_users }}</div>
+          <div class="stat-label">Users Profiled</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-red"><i class="bi bi-person-fill-exclamation"></i></div>
+        <div>
+          <div class="stat-value">{{ stats.n_malicious }}</div>
+          <div class="stat-label">Malicious Actors</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-green"><i class="bi bi-file-earmark-text-fill"></i></div>
+        <div>
+          <div class="stat-value">{{ stats.n_raw_observations }}</div>
+          <div class="stat-label">Raw Observations</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-amber"><i class="bi bi-graph-up-arrow"></i></div>
+        <div>
+          <div class="stat-value">{{ stats.malicious_rate }}%</div>
+          <div class="stat-label">Threat Rate</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row: top-users table + side panels ────────────────────────────── -->
+  <div class="row g-4 mb-4">
+
+    <!-- Top anomalous users -->
+    <div class="col-lg-7">
+      <div class="panel-card h-100">
+        <div class="panel-card-header">
+          <span class="panel-card-title"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Top Anomalous Users</span>
+          <span class="bd bd-neutral">Isolation Forest Score</span>
+        </div>
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Position</th>
+              <th>Department</th>
+              <th>Anomaly Score</th>
+              <th>Risk Score</th>
+              <th>Label</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in stats.top_users %}
+            <tr>
+              <td><span class="bd bd-neutral">{{ loop.index }}</span></td>
+              <td><strong>{{ u.position }}</strong></td>
+              <td style="color:var(--muted)">{{ u.department }}</td>
+              <td><code style="font-size:12px">{{ u.anomaly_score }}</code></td>
+              <td><code style="font-size:12px">{{ u.risk_score }}</code></td>
+              <td>
+                {% if u.is_malicious %}
+                  <span class="bd bd-danger">Malicious</span>
+                {% else %}
+                  <span class="bd bd-success">Normal</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Side panels -->
+    <div class="col-lg-5 d-flex flex-column gap-4">
+
+      <!-- Strongest feature pair -->
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <span class="panel-card-title"><i class="bi bi-link-45deg me-2" style="color:var(--accent)"></i>Strongest Correlation</span>
+          <span class="bd bd-indigo">Pearson</span>
+        </div>
+        <div class="panel-card-body">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div style="flex:1">
+              <div class="section-label mb-1">Feature A</div>
+              <div style="font-weight:600;font-size:14px">{{ stats.top_correlation_pair.feature_a }}</div>
+            </div>
+            <div class="text-center">
+              <div style="font-size:30px;font-weight:800;color:var(--accent);letter-spacing:-1px">
+                {{ stats.top_correlation_pair.correlation }}
+              </div>
+              <div style="font-size:11px;color:var(--muted)">r-value</div>
+            </div>
+            <div style="flex:1;text-align:right">
+              <div class="section-label mb-1">Feature B</div>
+              <div style="font-weight:600;font-size:14px">{{ stats.top_correlation_pair.feature_b }}</div>
+            </div>
+          </div>
+          <a href="/correlation" class="btn w-100 btn-sm"
+             style="background:var(--accent);color:#fff;border:none;padding:8px;border-radius:8px;font-weight:500">
+            <i class="bi bi-grid-3x3 me-2"></i>Open Full Correlation Matrix
+          </a>
+        </div>
+      </div>
+
+      <!-- Module shortcuts -->
+      <div class="panel-card flex-grow-1">
+        <div class="panel-card-header">
+          <span class="panel-card-title">Analysis Modules</span>
+        </div>
+        <div>
+          <a href="/correlation" class="d-flex align-items-center gap-3 px-4 py-3"
+             style="text-decoration:none;border-bottom:1px solid var(--border);color:inherit">
+            <div class="stat-icon si-indigo" style="width:36px;height:36px;font-size:15px;border-radius:8px">
+              <i class="bi bi-grid-3x3"></i></div>
+            <div>
+              <div style="font-weight:600;font-size:13.5px">Feature Correlation</div>
+              <div style="font-size:12px;color:var(--muted)">Pearson &amp; Spearman heatmaps + top pairs</div>
+            </div>
+            <i class="bi bi-chevron-right ms-auto" style="color:var(--muted)"></i>
+          </a>
+          <a href="/anomaly" class="d-flex align-items-center gap-3 px-4 py-3"
+             style="text-decoration:none;border-bottom:1px solid var(--border);color:inherit">
+            <div class="stat-icon si-red" style="width:36px;height:36px;font-size:15px;border-radius:8px">
+              <i class="bi bi-exclamation-triangle-fill"></i></div>
+            <div>
+              <div style="font-weight:600;font-size:13.5px">Anomaly Analysis</div>
+              <div style="font-size:12px;color:var(--muted)">Score distribution &amp; feature impact</div>
+            </div>
+            <i class="bi bi-chevron-right ms-auto" style="color:var(--muted)"></i>
+          </a>
+          <a href="/colluders" class="d-flex align-items-center gap-3 px-4 py-3"
+             style="text-decoration:none;color:inherit">
+            <div class="stat-icon si-amber" style="width:36px;height:36px;font-size:15px;border-radius:8px">
+              <i class="bi bi-people-fill"></i></div>
+            <div>
+              <div style="font-weight:600;font-size:13.5px">Collusion Detection</div>
+              <div style="font-size:12px;color:var(--muted)">Cross-user behavioural correlation</div>
+            </div>
+            <i class="bi bi-chevron-right ms-auto" style="color:var(--muted)"></i>
+          </a>
+        </div>
+      </div>
+
+    </div><!-- col -->
+  </div><!-- row -->
+
+  <!-- ── Anomaly score distribution chart ──────────────────────────────── -->
+  <div class="panel-card">
+    <div class="panel-card-header">
+      <span class="panel-card-title"><i class="bi bi-bar-chart-fill me-2" style="color:var(--accent)"></i>Anomaly Score Distribution</span>
+      <span style="font-size:12px;color:var(--muted)">Normal vs Malicious users — Isolation Forest</span>
+    </div>
+    <div class="panel-card-body">
+      <div id="dist-chart" class="chart-wrap">
+        <div class="chart-loading">
+          <div class="spinner-border spinner-border-sm"></div> Loading chart…
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PLOTLY_CFG = { responsive: true, displayModeBar: false };
+const FONT       = { family: 'Inter, sans-serif', size: 12 };
+
+fetch('/api/anomaly-scores')
+  .then(r => r.json())
+  .then(d => {
+    const normal    = d.scores.filter((_,i) => !d.is_malicious[i]);
+    const malicious = d.scores.filter((_,i) =>  d.is_malicious[i]);
+
+    Plotly.newPlot('dist-chart', [
+      { x: normal,    name: 'Normal',    type: 'histogram', nbinsx: 40,
+        opacity: 0.8, marker: { color: '#22c55e' } },
+      { x: malicious, name: 'Malicious', type: 'histogram', nbinsx: 40,
+        opacity: 0.8, marker: { color: '#ef4444' } },
+    ], {
+      barmode: 'overlay',
+      xaxis: { title: { text: 'Anomaly Score  (higher = more anomalous)', font: FONT } },
+      yaxis: { title: { text: 'Number of Users', font: FONT } },
+      legend: { x: 0.72, y: 0.97 },
+      margin: { t: 16, r: 20, b: 50, l: 56 },
+      plot_bgcolor: '#fafafa',
+      paper_bgcolor: '#fff',
+      font: FONT,
+    }, PLOTLY_CFG);
+  });
+</script>
+{% endblock %}

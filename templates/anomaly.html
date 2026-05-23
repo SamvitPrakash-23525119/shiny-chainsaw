@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Anomaly Analysis{% endblock %}
+{% block page_title %}Anomaly Analysis{% endblock %}
+{% block page_subtitle %}Feature-to-anomaly correlation — which metadata attributes drive suspicious behaviour{% endblock %}
+
+{% block content %}
+<div class="content-area">
+
+  <!-- ── Info banner ───────────────────────────────────────────────────── -->
+  <div class="info-box blue mb-4">
+    <i class="bi bi-info-circle-fill"></i>
+    <div>
+      <strong>What this shows:</strong> Each bar is the Pearson r between a metadata feature and the
+      Isolation Forest anomaly score. Features with a high positive r are the strongest predictors of
+      anomalous (potentially threatening) behaviour. Statistically significant correlations (p &lt; 0.05)
+      are highlighted. The scatter plot maps every user's anomaly score against their computed risk score.
+    </div>
+  </div>
+
+  <!-- ── Feature–anomaly correlation bar chart ─────────────────────────── -->
+  <div class="panel-card mb-4">
+    <div class="panel-card-header">
+      <span class="panel-card-title">
+        <i class="bi bi-bar-chart-steps me-2" style="color:var(--accent)"></i>Feature–Anomaly Score Correlation
+      </span>
+      <div class="d-flex gap-2 align-items-center">
+        <span class="bd bd-danger" style="font-size:11px">■ Significant (p&lt;0.05)</span>
+        <span class="bd bd-neutral" style="font-size:11px">■ Not significant</span>
+      </div>
+    </div>
+    <div class="panel-card-body p-0">
+      <div id="bar-chart" class="chart-wrap" style="min-height:440px">
+        <div class="chart-loading"><div class="spinner-border spinner-border-sm"></div>&nbsp;Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Scatter + table row ───────────────────────────────────────────── -->
+  <div class="row g-4">
+
+    <!-- Scatter: anomaly score vs risk score -->
+    <div class="col-lg-7">
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <span class="panel-card-title">
+            <i class="bi bi-scatter-chart me-2" style="color:var(--accent)"></i>Anomaly Score vs Risk Score
+          </span>
+          <span class="bd bd-neutral">per user</span>
+        </div>
+        <div class="panel-card-body p-0">
+          <div id="scatter-chart" class="chart-wrap" style="min-height:380px">
+            <div class="chart-loading"><div class="spinner-border spinner-border-sm"></div>&nbsp;Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table: Pearson & Spearman side by side -->
+    <div class="col-lg-5">
+      <div class="panel-card h-100">
+        <div class="panel-card-header">
+          <span class="panel-card-title">Correlation Coefficients</span>
+          <span class="bd bd-indigo">All 17 Features</span>
+        </div>
+        <div style="overflow-y:auto;max-height:420px">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Pearson r</th>
+                <th>Spearman ρ</th>
+                <th>p-value</th>
+              </tr>
+            </thead>
+            <tbody id="corr-table-body">
+              <tr><td colspan="4" class="text-center py-3" style="color:var(--muted)">
+                <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- row -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PLOTLY_CFG = { responsive: true, displayModeBar: false };
+const FONT       = { family: 'Inter, sans-serif', size: 12 };
+
+// ── Feature–anomaly bar chart ────────────────────────────────────────────
+fetch('/api/anomaly-correlation')
+  .then(r => r.json())
+  .then(data => {
+    const labels = data.map(d => d.label);
+    const rVals  = data.map(d => d.pearson_r);
+    const colors = data.map(d => d.significant ? '#6366f1' : '#94a3b8');
+
+    Plotly.newPlot('bar-chart', [{
+      type: 'bar',
+      x: rVals,
+      y: labels,
+      orientation: 'h',
+      marker: {
+        color: colors,
+        line: { color: 'rgba(0,0,0,.08)', width: 1 }
+      },
+      text: rVals.map(v => v.toFixed(3)),
+      textposition: 'outside',
+      hovertemplate: '<b>%{y}</b><br>Pearson r = %{x:.4f}<extra></extra>',
+    }], {
+      xaxis: {
+        title: { text: 'Pearson r (correlation with anomaly score)', font: FONT },
+        zeroline: true, zerolinecolor: '#cbd5e1', zerolinewidth: 2,
+        range: [-1, 1],
+      },
+      yaxis: { tickfont: { ...FONT, size: 11 }, autorange: 'reversed' },
+      margin: { t: 16, r: 60, b: 50, l: 180 },
+      plot_bgcolor: '#fafafa',
+      paper_bgcolor: '#fff',
+      font: FONT,
+      height: 460,
+    }, PLOTLY_CFG);
+
+    // ── Table ──────────────────────────────────────────────────────────
+    const tbody = document.getElementById('corr-table-body');
+    tbody.innerHTML = data.map(d => {
+      const sig = d.significant
+        ? `<span class="bd bd-danger">${d.pearson_p}</span>`
+        : `<span class="bd bd-neutral">${d.pearson_p}</span>`;
+      const rCls = Math.abs(d.pearson_r) > 0.3 ? 'bd-indigo' : 'bd-neutral';
+      return `<tr>
+        <td style="font-weight:500;font-size:12px">${d.label}</td>
+        <td><span class="bd ${rCls}">${d.pearson_r}</span></td>
+        <td><span class="bd bd-neutral">${d.spearman_rho}</span></td>
+        <td>${sig}</td>
+      </tr>`;
+    }).join('');
+  });
+
+// ── Scatter: anomaly vs risk score ───────────────────────────────────────
+fetch('/api/anomaly-scores')
+  .then(r => r.json())
+  .then(d => {
+    const normal = {
+      x: d.risk_scores.filter((_,i) => !d.is_malicious[i]),
+      y: d.scores.filter((_,i)      => !d.is_malicious[i]),
+      text: d.positions.filter((_,i)=> !d.is_malicious[i]).map(
+              (p,i) => `${p}<br>${d.departments.filter((_,j)=>!d.is_malicious[j])[i]}`),
+      mode: 'markers',
+      name: 'Normal',
+      marker: { color: '#22c55e', size: 7, opacity: 0.7,
+                line: { color: '#fff', width: 1 } },
+      hovertemplate: '<b>%{text}</b><br>Risk: %{x:.3f}<br>Anomaly: %{y:.4f}<extra></extra>',
+    };
+    const mal = {
+      x: d.risk_scores.filter((_,i) =>  d.is_malicious[i]),
+      y: d.scores.filter((_,i)      =>  d.is_malicious[i]),
+      text: d.positions.filter((_,i)=>  d.is_malicious[i]).map(
+              (p,i) => `${p}<br>${d.departments.filter((_,j)=>d.is_malicious[j])[i]}`),
+      mode: 'markers',
+      name: 'Malicious',
+      marker: { color: '#ef4444', size: 9, symbol: 'diamond', opacity: 0.85,
+                line: { color: '#fff', width: 1 } },
+      hovertemplate: '<b>%{text}</b><br>Risk: %{x:.3f}<br>Anomaly: %{y:.4f}<extra></extra>',
+    };
+
+    Plotly.newPlot('scatter-chart', [normal, mal], {
+      xaxis: { title: { text: 'Heuristic Risk Score', font: FONT } },
+      yaxis: { title: { text: 'Isolation Forest Anomaly Score', font: FONT } },
+      legend: { x: 0.02, y: 0.97 },
+      margin: { t: 16, r: 20, b: 50, l: 60 },
+      plot_bgcolor: '#fafafa',
+      paper_bgcolor: '#fff',
+      font: FONT,
+      height: 400,
+    }, PLOTLY_CFG);
+  });
+</script>
+{% endblock %}

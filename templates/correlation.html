@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Feature Correlation{% endblock %}
+{% block page_title %}Feature Correlation Analysis{% endblock %}
+{% block page_subtitle %}Pearson &amp; Spearman correlation matrices across 17 behavioural metadata features{% endblock %}
+
+{% block content %}
+<div class="content-area">
+
+  <!-- ── Info banner ───────────────────────────────────────────────────── -->
+  <div class="info-box indigo mb-4">
+    <i class="bi bi-info-circle-fill"></i>
+    <div>
+      <strong>What this shows:</strong> Each cell is the correlation coefficient between two metadata features
+      aggregated per user. Strong positive values (→ 1) mean features rise together; strong negative values
+      (→ −1) mean they move in opposite directions. Statistically significant pairs help investigators
+      prioritise which metadata attributes to collect and analyse jointly.
+    </div>
+  </div>
+
+  <!-- ── Method toggle + heatmap ───────────────────────────────────────── -->
+  <div class="panel-card mb-4">
+    <div class="panel-card-header">
+      <span class="panel-card-title"><i class="bi bi-grid-3x3 me-2" style="color:var(--accent)"></i>Correlation Matrix</span>
+
+      <!-- Pearson / Spearman toggle -->
+      <div class="method-toggle btn-group" role="group">
+        <input type="radio" class="btn-check" name="method" id="m-pearson" value="pearson" checked />
+        <label class="btn btn-outline-secondary btn-sm" for="m-pearson">Pearson</label>
+
+        <input type="radio" class="btn-check" name="method" id="m-spearman" value="spearman" />
+        <label class="btn btn-outline-secondary btn-sm" for="m-spearman">Spearman</label>
+      </div>
+    </div>
+    <div class="panel-card-body p-0">
+      <div id="heatmap" class="chart-wrap" style="min-height:600px">
+        <div class="chart-loading"><div class="spinner-border spinner-border-sm"></div>&nbsp;Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Top correlated pairs table ────────────────────────────────────── -->
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <span class="panel-card-title"><i class="bi bi-arrow-up-right-circle-fill me-2 text-danger"></i>Strongest Positive Pairs</span>
+          <span class="bd bd-neutral" id="method-label">Pearson r</span>
+        </div>
+        <table class="tbl">
+          <thead>
+            <tr><th>#</th><th>Feature A</th><th>Feature B</th><th>r</th></tr>
+          </thead>
+          <tbody id="pos-pairs-body">
+            <tr><td colspan="4" class="text-center py-3" style="color:var(--muted)">
+              <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <span class="panel-card-title"><i class="bi bi-arrow-down-right-circle-fill me-2 text-primary"></i>Strongest Negative Pairs</span>
+          <span class="bd bd-blue" id="method-label-neg">Pearson r</span>
+        </div>
+        <table class="tbl">
+          <thead>
+            <tr><th>#</th><th>Feature A</th><th>Feature B</th><th>r</th></tr>
+          </thead>
+          <tbody id="neg-pairs-body">
+            <tr><td colspan="4" class="text-center py-3" style="color:var(--muted)">
+              <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PLOTLY_CFG = { responsive: true, displayModeBar: true, displaylogo: false };
+const FONT       = { family: 'Inter, sans-serif', size: 11 };
+
+let currentData = null;
+
+function renderHeatmap(data) {
+  currentData = data;
+  const { z, labels } = data;
+
+  // Annotation text on each cell
+  const textArr = z.map(row => row.map(v => v.toFixed(2)));
+
+  Plotly.react('heatmap', [{
+    type: 'heatmap',
+    z,
+    x: labels,
+    y: labels,
+    colorscale: 'RdBu',
+    zmid: 0,
+    zmin: -1, zmax: 1,
+    text: textArr,
+    texttemplate: '%{text}',
+    textfont: { size: 9, color: '#1e293b' },
+    showscale: true,
+    hoverongaps: false,
+  }], {
+    height: 620,
+    margin: { t: 20, r: 20, b: 160, l: 160 },
+    xaxis: { tickangle: -40, tickfont: FONT, side: 'bottom' },
+    yaxis: { tickfont: FONT, autorange: 'reversed' },
+    paper_bgcolor: '#fff',
+    plot_bgcolor: '#fff',
+    font: FONT,
+  }, PLOTLY_CFG);
+}
+
+function renderPairs(z, labels) {
+  // Collect all off-diagonal pairs
+  const pairs = [];
+  for (let i = 0; i < labels.length; i++) {
+    for (let j = i + 1; j < labels.length; j++) {
+      pairs.push({ a: labels[i], b: labels[j], r: z[i][j] });
+    }
+  }
+  pairs.sort((a, b) => b.r - a.r);
+
+  const top5pos = pairs.slice(0, 7);
+  const top5neg = [...pairs].sort((a, b) => a.r - b.r).slice(0, 7);
+
+  function rows(arr, tbody) {
+    tbody.innerHTML = arr.map((p, i) => {
+      const cls = p.r > 0 ? 'bd-danger' : 'bd-blue';
+      return `<tr>
+        <td><span class="bd bd-neutral">${i+1}</span></td>
+        <td style="font-weight:500">${p.a}</td>
+        <td style="font-weight:500">${p.b}</td>
+        <td><span class="bd ${cls}">${p.r.toFixed(3)}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  rows(top5pos, document.getElementById('pos-pairs-body'));
+  rows(top5neg, document.getElementById('neg-pairs-body'));
+}
+
+function loadMatrix(method) {
+  document.getElementById('heatmap').innerHTML =
+    '<div class="chart-loading"><div class="spinner-border spinner-border-sm"></div>&nbsp;Loading…</div>';
+
+  const label = method.charAt(0).toUpperCase() + method.slice(1) + ' r';
+  document.getElementById('method-label').textContent     = label;
+  document.getElementById('method-label-neg').textContent = label;
+
+  fetch(`/api/correlation-matrix?method=${method}`)
+    .then(r => r.json())
+    .then(data => {
+      renderHeatmap(data);
+      renderPairs(data.z, data.labels);
+    });
+}
+
+// Initial load
+loadMatrix('pearson');
+
+// Toggle listener
+document.querySelectorAll('input[name="method"]').forEach(el => {
+  el.addEventListener('change', () => loadMatrix(el.value));
+});
+</script>
+{% endblock %}
