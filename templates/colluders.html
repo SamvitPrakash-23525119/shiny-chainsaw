@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Collusion Detection{% endblock %}
+{% block page_title %}Collusion Detection{% endblock %}
+{% block page_subtitle %}Cross-user behavioural correlation — identifying users with suspiciously similar metadata profiles{% endblock %}
+
+{% block content %}
+<div class="content-area">
+
+  <!-- ── Info banner ───────────────────────────────────────────────────── -->
+  <div class="info-box indigo mb-4">
+    <i class="bi bi-info-circle-fill"></i>
+    <div>
+      <strong>What this shows:</strong> Each row is a pair of users whose 17-feature behavioural profiles
+      are highly correlated (Pearson r ≥ threshold). A very high correlation across all behavioural
+      metadata dimensions may indicate coordinated insider-threat activity (collusion). Pairs flagged
+      in <span class="bd bd-danger">red</span> contain at least one confirmed malicious actor.
+    </div>
+  </div>
+
+  <!-- ── Threshold control + summary ──────────────────────────────────── -->
+  <div class="panel-card mb-4">
+    <div class="panel-card-header">
+      <span class="panel-card-title"><i class="bi bi-sliders me-2" style="color:var(--accent)"></i>Correlation Threshold</span>
+      <span id="pair-count-badge" class="bd bd-neutral">— pairs found</span>
+    </div>
+    <div class="panel-card-body">
+      <div class="row align-items-center g-3">
+        <div class="col-md-8">
+          <label class="section-label mb-2">Minimum |r| to flag a pair</label>
+          <div class="range-wrap">
+            <span style="font-size:12px;color:var(--muted)">0.70</span>
+            <input type="range" id="threshold-slider" min="0.70" max="0.99" step="0.01" value="0.85" />
+            <span style="font-size:12px;color:var(--muted)">0.99</span>
+            <div class="range-val" id="threshold-display">0.85</div>
+          </div>
+        </div>
+        <div class="col-md-4 d-flex justify-content-end">
+          <button class="btn btn-sm px-4" id="btn-search"
+                  style="background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:500">
+            <i class="bi bi-search me-2"></i>Find Correlated Pairs
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Results table ─────────────────────────────────────────────────── -->
+  <div class="panel-card mb-4">
+    <div class="panel-card-header">
+      <span class="panel-card-title"><i class="bi bi-table me-2" style="color:var(--accent)"></i>Correlated User Pairs</span>
+      <div class="d-flex gap-2">
+        <span class="bd bd-danger" style="font-size:11px">■ Contains malicious actor</span>
+        <span class="bd bd-neutral" style="font-size:11px">■ Both normal</span>
+      </div>
+    </div>
+    <div id="table-wrap" style="overflow-x:auto">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>User A</th>
+            <th>User B</th>
+            <th>Pearson r</th>
+            <th>p-value</th>
+            <th>Anomaly A</th>
+            <th>Anomaly B</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody id="pairs-body">
+          <tr>
+            <td colspan="8" class="text-center py-4" style="color:var(--muted)">
+              Adjust the threshold and click <strong>Find Correlated Pairs</strong> to run the analysis.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Correlation distribution chart ───────────────────────────────── -->
+  <div class="panel-card">
+    <div class="panel-card-header">
+      <span class="panel-card-title"><i class="bi bi-bar-chart-fill me-2" style="color:var(--accent)"></i>Distribution of Pair Correlations</span>
+      <span style="font-size:12px;color:var(--muted)">Among flagged pairs</span>
+    </div>
+    <div class="panel-card-body p-0">
+      <div id="dist-chart" class="chart-wrap" style="min-height:300px">
+        <div class="chart-loading" style="min-height:300px">
+          Run a search to see the distribution.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PLOTLY_CFG = { responsive: true, displayModeBar: false };
+const FONT       = { family: 'Inter, sans-serif', size: 12 };
+
+const slider  = document.getElementById('threshold-slider');
+const display = document.getElementById('threshold-display');
+const btn     = document.getElementById('btn-search');
+const badge   = document.getElementById('pair-count-badge');
+const tbody   = document.getElementById('pairs-body');
+
+slider.addEventListener('input', () => { display.textContent = parseFloat(slider.value).toFixed(2); });
+
+btn.addEventListener('click', runSearch);
+
+function runSearch() {
+  const t = parseFloat(slider.value).toFixed(2);
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Searching…';
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4" style="color:var(--muted)"><div class="spinner-border spinner-border-sm me-2"></div>Computing pairwise correlations…</td></tr>';
+
+  fetch(`/api/colluders?threshold=${t}`)
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-search me-2"></i>Find Correlated Pairs';
+
+      const { pairs, total } = data;
+      badge.textContent = `${total} pair${total !== 1 ? 's' : ''} found`;
+      badge.className = total > 0 ? 'bd bd-danger' : 'bd bd-success';
+
+      if (pairs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4" style="color:var(--muted)">
+          No pairs found at threshold ${t}. Try lowering the threshold.
+        </td></tr>`;
+        Plotly.purge('dist-chart');
+        document.getElementById('dist-chart').innerHTML =
+          '<div class="chart-loading" style="min-height:300px">No data to display.</div>';
+        return;
+      }
+
+      // ── Table rows ────────────────────────────────────────────────────
+      tbody.innerHTML = pairs.map((p, i) => {
+        const rowStyle = p.risk_flag ? 'background:#fff5f5' : '';
+        const rCls     = p.correlation >= 0.95 ? 'bd-danger' : p.correlation >= 0.9 ? 'bd-warning' : 'bd-indigo';
+        const labelA   = p.user_a_malicious ? '<span class="bd bd-danger ms-1">M</span>' : '';
+        const labelB   = p.user_b_malicious ? '<span class="bd bd-danger ms-1">M</span>' : '';
+        const pCls     = p.p_value < 0.001 ? 'bd-danger' : p.p_value < 0.05 ? 'bd-warning' : 'bd-neutral';
+        return `<tr style="${rowStyle}">
+          <td><span class="bd bd-neutral">${i+1}</span></td>
+          <td style="font-size:12px;font-weight:500">${p.user_a}${labelA}</td>
+          <td style="font-size:12px;font-weight:500">${p.user_b}${labelB}</td>
+          <td><span class="bd ${rCls}">${p.correlation}</span></td>
+          <td><span class="bd ${pCls}">${p.p_value}</span></td>
+          <td><code style="font-size:11px">${p.user_a_anomaly}</code></td>
+          <td><code style="font-size:11px">${p.user_b_anomaly}</code></td>
+          <td>${p.risk_flag
+            ? '<span class="bd bd-danger"><i class="bi bi-exclamation-circle-fill me-1"></i>High</span>'
+            : '<span class="bd bd-success"><i class="bi bi-check-circle-fill me-1"></i>Low</span>'
+          }</td>
+        </tr>`;
+      }).join('');
+
+      // ── Distribution histogram ─────────────────────────────────────
+      const rAll  = pairs.map(p => p.correlation);
+      const rSafe = pairs.filter(p => !p.risk_flag).map(p => p.correlation);
+      const rRisk = pairs.filter(p =>  p.risk_flag).map(p => p.correlation);
+
+      Plotly.react('dist-chart', [
+        { x: rSafe, name: 'Both Normal', type: 'histogram', nbinsx: 20,
+          marker: { color: '#22c55e' }, opacity: 0.8 },
+        { x: rRisk, name: 'Contains Malicious', type: 'histogram', nbinsx: 20,
+          marker: { color: '#ef4444' }, opacity: 0.8 },
+      ], {
+        barmode: 'overlay',
+        xaxis: { title: { text: 'Pearson r (cross-user correlation)', font: FONT } },
+        yaxis: { title: { text: 'Number of Pairs', font: FONT } },
+        legend: { x: 0.02, y: 0.97 },
+        margin: { t: 16, r: 20, b: 50, l: 56 },
+        plot_bgcolor: '#fafafa',
+        paper_bgcolor: '#fff',
+        font: FONT,
+        height: 320,
+      }, PLOTLY_CFG);
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-search me-2"></i>Find Correlated Pairs';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger">Error fetching data. Is the server running?</td></tr>';
+    });
+}
+</script>
+{% endblock %}
