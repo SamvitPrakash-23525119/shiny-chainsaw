@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Pattern Recognition{% endblock %}
+{% block page_title %}Pattern Recognition{% endblock %}
+{% block page_subtitle %}Logistic Regression — learned behavioural signatures of insider threats{% endblock %}
+
+{% block content %}
+<div class="content-area">
+
+  <!-- ── Info banner ───────────────────────────────────────────────────── -->
+  <div class="info-box indigo mb-4">
+    <i class="bi bi-info-circle-fill"></i>
+    <div>
+      <strong>What this shows:</strong> A Logistic Regression classifier is trained on the 17
+      aggregated user features to learn which behavioural <em>patterns</em> separate normal from
+      malicious insiders. Unlike the unsupervised Isolation Forest, LR assigns an explicit
+      <strong>probability of malicious intent</strong> to each user and exposes the exact
+      feature weights driving the decision — making the model fully interpretable.
+      When no ground-truth labels exist the top-5 % of Isolation Forest anomaly scores
+      are used as pseudo-labels so the weights remain meaningful for investigation.
+    </div>
+  </div>
+
+  <!-- ── Pseudo-label warning (shown by JS when has_real_labels=false) ── -->
+  <div id="pseudo-banner" class="info-box blue mb-4" style="display:none">
+    <i class="bi bi-exclamation-circle-fill"></i>
+    <div>
+      <strong>Unlabelled dataset detected.</strong> No <code>is_malicious</code> ground-truth
+      labels were found. Logistic Regression has been trained using the top&nbsp;5&nbsp;%
+      of Isolation Forest anomaly scores as pseudo-labels. Weights are indicative only —
+      upload a labelled CSV for fully supervised pattern recognition.
+    </div>
+  </div>
+
+  <!-- ── Metric cards ──────────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4" id="metric-cards">
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-indigo"><i class="bi bi-bullseye"></i></div>
+        <div>
+          <div class="stat-value" id="m-accuracy">—</div>
+          <div class="stat-label">Accuracy</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-blue"><i class="bi bi-crosshair2"></i></div>
+        <div>
+          <div class="stat-value" id="m-precision">—</div>
+          <div class="stat-label">Precision</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-green"><i class="bi bi-search-heart"></i></div>
+        <div>
+          <div class="stat-value" id="m-recall">—</div>
+          <div class="stat-label">Recall</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-amber"><i class="bi bi-bar-chart-steps"></i></div>
+        <div>
+          <div class="stat-value" id="m-f1">—</div>
+          <div class="stat-label">F1 Score</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Feature weight chart ─────────────────────────────────────────── -->
+  <div class="panel-card mb-4">
+    <div class="panel-card-header">
+      <span class="panel-card-title">
+        <i class="bi bi-bar-chart-steps me-2" style="color:var(--accent)"></i>
+        LR Feature Weights — Pattern Indicators
+      </span>
+      <div class="d-flex gap-2">
+        <span class="bd bd-danger"  style="font-size:11px">■ Risk factor</span>
+        <span class="bd bd-success" style="font-size:11px">■ Protective factor</span>
+      </div>
+    </div>
+    <div class="panel-card-body p-0">
+      <div id="weight-chart" class="chart-wrap" style="min-height:460px">
+        <div class="chart-loading"><div class="spinner-border spinner-border-sm"></div>&nbsp;Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Scatter + top users ───────────────────────────────────────────── -->
+  <div class="row g-4">
+
+    <!-- LR prob vs IF anomaly score scatter -->
+    <div class="col-lg-7">
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <span class="panel-card-title">
+            <i class="bi bi-scatter-chart me-2" style="color:var(--accent)"></i>
+            LR Probability vs Isolation Forest Score
+          </span>
+          <span class="bd bd-neutral">per user</span>
+        </div>
+        <div class="panel-card-body p-0">
+          <div id="scatter-chart" class="chart-wrap" style="min-height:380px">
+            <div class="chart-loading"><div class="spinner-border spinner-border-sm"></div>&nbsp;Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top flagged users table -->
+    <div class="col-lg-5">
+      <div class="panel-card h-100">
+        <div class="panel-card-header">
+          <span class="panel-card-title">Top Flagged Users</span>
+          <span class="bd bd-danger">Highest LR Probability</span>
+        </div>
+        <div style="overflow-y:auto;max-height:420px">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>LR Prob</th>
+                <th>IF Score</th>
+                <th>Label</th>
+              </tr>
+            </thead>
+            <tbody id="top-users-body">
+              <tr><td colspan="4" class="text-center py-3" style="color:var(--muted)">
+                <div class="spinner-border spinner-border-sm me-2"></div>Loading…
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- row -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PLOTLY_CFG = { responsive: true, displayModeBar: false };
+const FONT       = { family: 'Inter, sans-serif', size: 12 };
+
+// ── Fetch weights ─────────────────────────────────────────────────────────
+fetch('/api/pattern-weights')
+  .then(r => r.json())
+  .then(weights => {
+    const labels = weights.map(w => w.label);
+    const vals   = weights.map(w => w.weight);
+    const colors = weights.map(w => w.direction === 'risk' ? '#ef4444' : '#22c55e');
+
+    document.getElementById('weight-chart').innerHTML = '';
+    Plotly.newPlot('weight-chart', [{
+      type:        'bar',
+      x:           vals,
+      y:           labels,
+      orientation: 'h',
+      marker: {
+        color: colors,
+        line:  { color: 'rgba(0,0,0,.07)', width: 1 },
+      },
+      text:          vals.map(v => v.toFixed(3)),
+      textposition:  'outside',
+      hovertemplate: '<b>%{y}</b><br>Weight = %{x:.4f}<extra></extra>',
+    }], {
+      xaxis: {
+        title:        { text: 'Logistic Regression coefficient (log-odds)', font: FONT },
+        zeroline:     true,
+        zerolinecolor:'#cbd5e1',
+        zerolinewidth: 2,
+      },
+      yaxis:        { tickfont: { ...FONT, size: 11 }, autorange: 'reversed' },
+      margin:       { t: 16, r: 70, b: 50, l: 190 },
+      plot_bgcolor: '#fafafa',
+      paper_bgcolor:'#fff',
+      font:         FONT,
+      height:       480,
+    }, PLOTLY_CFG);
+  });
+
+// ── Fetch predictions ─────────────────────────────────────────────────────
+fetch('/api/pattern-predictions')
+  .then(r => r.json())
+  .then(d => {
+    // pseudo-label banner
+    if (!d.has_real_labels) {
+      document.getElementById('pseudo-banner').style.display = 'flex';
+    }
+
+    // metric cards
+    const pct = v => (v * 100).toFixed(1) + '%';
+    document.getElementById('m-accuracy').textContent  = pct(d.metrics.accuracy);
+    document.getElementById('m-precision').textContent = pct(d.metrics.precision);
+    document.getElementById('m-recall').textContent    = pct(d.metrics.recall);
+    document.getElementById('m-f1').textContent        = pct(d.metrics.f1);
+
+    // ── Scatter: LR prob vs IF score ─────────────────────────────────────
+    function makeTrace(label, color, symbol, filterFn) {
+      const sub = d.users.filter(filterFn);
+      return {
+        x:    sub.map(u => u.if_score),
+        y:    sub.map(u => u.lr_prob),
+        text: sub.map(u => `${u.position}<br>${u.department}`),
+        mode: 'markers',
+        name: label,
+        marker: {
+          color, symbol, size: 8, opacity: 0.8,
+          line: { color: '#fff', width: 1 },
+        },
+        hovertemplate: '<b>%{text}</b><br>IF score: %{x:.4f}<br>LR prob: %{y:.4f}<extra></extra>',
+      };
+    }
+
+    const hasLabels = d.users.some(u => u.is_malicious === 1);
+    let traces;
+    if (hasLabels) {
+      traces = [
+        makeTrace('Normal',    '#22c55e', 'circle',  u => !u.is_malicious),
+        makeTrace('Malicious', '#ef4444', 'diamond', u =>  u.is_malicious),
+      ];
+    } else {
+      // no real labels — colour by LR prediction instead
+      traces = [
+        makeTrace('LR: Normal',    '#22c55e', 'circle',  u => !u.lr_pred),
+        makeTrace('LR: Flagged',   '#ef4444', 'diamond', u =>  u.lr_pred),
+      ];
+    }
+
+    document.getElementById('scatter-chart').innerHTML = '';
+    Plotly.newPlot('scatter-chart', traces, {
+      xaxis:  { title: { text: 'Isolation Forest Anomaly Score', font: FONT } },
+      yaxis:  { title: { text: 'LR Malicious Probability', font: FONT }, range: [0, 1] },
+      legend: { x: 0.02, y: 0.97 },
+      shapes: [{
+        type: 'line', x0: 0, x1: 1, xref: 'paper',
+        y0: 0.5, y1: 0.5,
+        line: { color: '#f59e0b', width: 1.5, dash: 'dot' },
+      }],
+      annotations: [{
+        xref: 'paper', yref: 'y', x: 1.01, y: 0.5,
+        text: 'p=0.5', showarrow: false,
+        font: { size: 10, color: '#f59e0b' }, xanchor: 'left',
+      }],
+      margin:        { t: 16, r: 50, b: 50, l: 60 },
+      plot_bgcolor:  '#fafafa',
+      paper_bgcolor: '#fff',
+      font:          FONT,
+      height:        400,
+    }, PLOTLY_CFG);
+
+    // ── Top users table ───────────────────────────────────────────────────
+    const top = d.users.slice(0, 15);   // already sorted by lr_prob desc
+    document.getElementById('top-users-body').innerHTML = top.map(u => {
+      const probCls = u.lr_prob >= 0.7 ? 'bd-danger'
+                    : u.lr_prob >= 0.4 ? 'bd-warning'
+                    : 'bd-success';
+      const labelBadge = u.is_malicious
+        ? '<span class="bd bd-danger">Malicious</span>'
+        : '<span class="bd bd-success">Normal</span>';
+      return `<tr>
+        <td>
+          <div style="font-weight:500;font-size:12px">${u.position}</div>
+          <div style="font-size:11px;color:var(--muted)">${u.department}</div>
+        </td>
+        <td><span class="bd ${probCls}">${(u.lr_prob*100).toFixed(1)}%</span></td>
+        <td><span class="bd bd-neutral">${u.if_score.toFixed(3)}</span></td>
+        <td>${labelBadge}</td>
+      </tr>`;
+    }).join('');
+  });
+</script>
+{% endblock %}

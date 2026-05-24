@@ -154,6 +154,11 @@ def dataset():
     )
 
 
+@app.route('/pattern')
+def pattern():
+    return render_template('pattern.html', active='pattern')
+
+
 @app.route('/model')
 def model():
     model_files = []
@@ -324,6 +329,16 @@ def api_dataset_stats():
                                  df[col][az.df_users['is_malicious'] == 1].tolist()],
         }
     return jsonify(out)
+
+
+@app.route('/api/pattern-weights')
+def api_pattern_weights():
+    return jsonify(get_analyzer().get_pattern_weights())
+
+
+@app.route('/api/pattern-predictions')
+def api_pattern_predictions():
+    return jsonify(get_analyzer().get_pattern_predictions())
 
 
 @app.route('/api/model-info')

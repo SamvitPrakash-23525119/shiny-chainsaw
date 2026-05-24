@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 from sklearn.ensemble import IsolationForest
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.preprocessing import StandardScaler
 
 IDENTITY_COLS = [
@@ -66,6 +68,7 @@ class CorrelationAnalyzer:
             self.df_raw['is_malicious'] = 0
         self.df_users = self._aggregate_users()
         self.anomaly_scores = self._compute_anomaly_scores()
+        self._lr = self._compute_lr_patterns()
 
     # ------------------------------------------------------------------
     # Preprocessing
@@ -143,6 +146,94 @@ class CorrelationAnalyzer:
 
         # Negate decision_function: normal = positive → anomalous = larger value
         return -clf.decision_function(X_scaled)
+
+    # ------------------------------------------------------------------
+    # Logistic Regression — pattern recognition
+    # ------------------------------------------------------------------
+
+    def _compute_lr_patterns(self) -> dict:
+        """Train a Logistic Regression classifier for pattern recognition.
+
+        When ground-truth labels exist (is_malicious has at least one positive)
+        the model trains on those labels.  When the dataset is unlabelled (e.g.
+        a live investigation CSV), the top-5 % of Isolation Forest anomaly
+        scores are used as pseudo-labels so the page still renders meaningful
+        feature weights.
+
+        Returns a dict with keys: probabilities, predictions, weights,
+        has_real_labels, metrics.
+        """
+        X = self.df_users[FEATURE_NAMES].values.astype(float)
+        scaler = StandardScaler()
+        X_sc = scaler.fit_transform(X)
+
+        y = self.df_users['is_malicious'].values.astype(int)
+        has_real = bool(y.sum() > 0)
+
+        if not has_real:
+            # pseudo-labels: top 5 % by anomaly score → 1, rest → 0
+            thresh = np.percentile(self.anomaly_scores, 95)
+            y = (self.anomaly_scores >= thresh).astype(int)
+
+        clf = LogisticRegression(
+            max_iter=1000,
+            class_weight='balanced',
+            random_state=42,
+            solver='lbfgs',
+        )
+        clf.fit(X_sc, y)
+
+        proba = clf.predict_proba(X_sc)[:, 1]
+        preds = clf.predict(X_sc)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            metrics = {
+                'accuracy':  round(float(accuracy_score(y, preds)),                   4),
+                'precision': round(float(precision_score(y, preds, zero_division=0)), 4),
+                'recall':    round(float(recall_score(y, preds,    zero_division=0)), 4),
+                'f1':        round(float(f1_score(y, preds,        zero_division=0)), 4),
+            }
+
+        return {
+            'probabilities':    proba,
+            'predictions':      preds,
+            'weights':          clf.coef_[0],
+            'has_real_labels':  has_real,
+            'metrics':          metrics,
+        }
+
+    def get_pattern_weights(self) -> list:
+        """Return LR feature coefficients ranked by |weight| descending."""
+        result = []
+        for name, w in zip(FEATURE_NAMES, self._lr['weights']):
+            result.append({
+                'feature':   name,
+                'label':     FEATURE_LABELS[name],
+                'weight':    round(float(w), 4),
+                'direction': 'risk' if w >= 0 else 'protective',
+            })
+        return sorted(result, key=lambda x: abs(x['weight']), reverse=True)
+
+    def get_pattern_predictions(self) -> dict:
+        """Return per-user LR probabilities alongside IF scores and labels."""
+        lr = self._lr
+        users = []
+        for i, row in enumerate(self.df_users.itertuples(index=False)):
+            users.append({
+                'department':   str(row.employee_department),
+                'position':     str(row.employee_position),
+                'lr_prob':      round(float(lr['probabilities'][i]), 4),
+                'lr_pred':      int(lr['predictions'][i]),
+                'if_score':     round(float(self.anomaly_scores[i]), 4),
+                'is_malicious': int(row.is_malicious),
+                'risk_score':   round(float(row.risk_score), 4),
+            })
+        return {
+            'users':            sorted(users, key=lambda u: u['lr_prob'], reverse=True),
+            'metrics':          lr['metrics'],
+            'has_real_labels':  lr['has_real_labels'],
+        }
 
     # ------------------------------------------------------------------
     # Correlation analysis methods
