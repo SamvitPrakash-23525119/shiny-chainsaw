@@ -75,3 +75,69 @@ class LogisticRegressionClassifier:
                 ``1`` holds the probability of the malicious class.
         """
         return self.model.predict_proba(X)
+
+    def get_pattern_report(self, feature_names: list) -> list:
+        """Return learned feature weights ranked by importance.
+
+        Each weight represents how strongly that feature pushes toward the
+        malicious class. A high positive weight means the feature is a strong
+        pattern indicator of suspicious behaviour. Sorted by absolute weight
+        so both strongly positive and strongly negative drivers are visible.
+
+        Args:
+            feature_names (list[str]): Names of features in the same order
+                they were passed to ``fit()``.
+
+        Returns:
+            list[dict]: Ranked list of dicts with keys ``feature``,
+                ``weight``, and ``direction`` (``'risk'`` for positive
+                weights, ``'protective'`` for negative).
+        """
+        weights = self.model.coef_[0]
+        paired = sorted(
+            zip(feature_names, weights),
+            key=lambda x: abs(x[1]),
+            reverse=True
+        )
+        return [
+            {
+                "feature": name,
+                "weight": round(float(w), 4),
+                "direction": "risk" if w >= 0 else "protective",
+            }
+            for name, w in paired
+        ]
+
+    def explain_prediction(self, x: np.ndarray, feature_names: list, top_n: int = 5) -> list:
+        """Return the top feature contributions for a single observation.
+
+        Contribution is computed as ``weight * feature_value`` — the portion
+        of the log-odds score that each feature is responsible for. Features
+        with the largest absolute contribution drove the prediction most.
+
+        Args:
+            x (np.ndarray): 1D feature vector for a single observation.
+            feature_names (list[str]): Names matching the order of ``x``.
+            top_n (int): Number of top contributors to return. Defaults to 5.
+
+        Returns:
+            list[dict]: Top ``top_n`` features sorted by absolute
+                contribution, each with keys ``feature``, ``value``,
+                ``weight``, and ``contribution``.
+        """
+        weights = self.model.coef_[0]
+        contributions = weights * x
+        ranked = sorted(
+            zip(feature_names, x, weights, contributions),
+            key=lambda t: abs(t[3]),
+            reverse=True
+        )
+        return [
+            {
+                "feature": name,
+                "value": round(float(val), 4),
+                "weight": round(float(w), 4),
+                "contribution": round(float(contrib), 4),
+            }
+            for name, val, w, contrib in ranked[:top_n]
+        ]
