@@ -97,8 +97,11 @@ function renderHeatmap(data) {
   // Annotation text on each cell
   const textArr = z.map(row => row.map(v => v.toFixed(2)));
 
+  // innerHTML clears the spinner; Plotly.newPlot always creates a fresh chart
+  // (Plotly.react would try to diff against stale internal state if Plotly.purge
+  // was not called beforehand, causing a silent failure on the Spearman switch)
   document.getElementById('heatmap').innerHTML = '';
-  Plotly.react('heatmap', [{
+  Plotly.newPlot('heatmap', [{
     type: 'heatmap',
     z,
     x: labels,
@@ -152,10 +155,13 @@ function renderPairs(z, labels) {
 }
 
 function loadMatrix(method) {
+  // Purge clears both the SVG *and* Plotly's internal state on the div element,
+  // so the subsequent Plotly.newPlot call in renderHeatmap starts from a clean slate.
+  Plotly.purge('heatmap');
   document.getElementById('heatmap').innerHTML =
     '<div class="chart-loading"><div class="spinner-border spinner-border-sm"></div>&nbsp;Loading…</div>';
 
-  const label = method.charAt(0).toUpperCase() + method.slice(1) + ' r';
+  const label = method === 'spearman' ? 'Spearman ρ' : 'Pearson r';
   document.getElementById('method-label').textContent     = label;
   document.getElementById('method-label-neg').textContent = label;
 
