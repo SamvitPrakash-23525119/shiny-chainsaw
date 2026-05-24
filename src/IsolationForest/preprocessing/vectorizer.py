@@ -1,6 +1,26 @@
 import numpy as np
 
-from src.models.aggregated_features import AggregatedFeatures
+from src.IsolationForest.models.aggregated_features import AggregatedFeatures
+
+FEATURE_NAMES = [
+    "employee_seniority_years",
+    "is_contractor",
+    "has_foreign_citizenship",
+    "has_criminal_record",
+    "has_medical_history",
+    "avg_total_printed_pages",
+    "avg_off_hours_print_ratio",
+    "avg_files_burned",
+    "avg_burned_from_other",
+    "avg_num_entries",
+    "avg_unique_campus_ratio",
+    "late_exit_ratio",
+    "weekend_entry_ratio",
+    "avg_trip_duration",
+    "avg_hostility_country_level",
+    "abroad_ratio",
+    "risk_score",
+]
 
 
 class FeatureVectorizer:

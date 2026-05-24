@@ -1,7 +1,7 @@
 import numpy as np
 from statistics import mean
-from src.models.user_entity import UserEntity
-from src.models.aggregated_features import AggregatedFeatures
+from src.IsolationForest.models.user_entity import UserEntity
+from src.IsolationForest.models.aggregated_features import AggregatedFeatures
 
 
 class FeatureAggregator:

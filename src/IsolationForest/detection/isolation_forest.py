@@ -1,6 +1,6 @@
 import numpy as np
 from .isolation_tree import IsolationTree
-from src.utils.c_factor import c_factor
+from src.IsolationForest.utils.c_factor import c_factor
 
 class IsolationForest:
     """Isolation Forest ensemble for anomaly scoring.

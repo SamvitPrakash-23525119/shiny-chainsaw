@@ -1,7 +1,7 @@
 import random
 import numpy as np
 from .isolation_tree_node import IsolationTreeNode
-from src.utils.c_factor import c_factor
+from src.IsolationForest.utils.c_factor import c_factor
 
 
 class IsolationTree:

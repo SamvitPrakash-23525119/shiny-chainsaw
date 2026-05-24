@@ -1,9 +1,9 @@
 import random
 import pandas as pd
 from typing import List, Tuple
-from src.models.user_entity import UserEntity
-from src.config.file_paths import TRAINING_DATA_PATH, TESTING_DATA_PATH, CLEANED_DATA_PATH
-from src.pipeline.threat_detection_pipeline import ThreatDetectionPipeline
+from src.IsolationForest.models.user_entity import UserEntity
+from src.IsolationForest.config.file_paths import TRAINING_DATA_PATH, TESTING_DATA_PATH, CLEANED_DATA_PATH
+from src.IsolationForest.pipeline.threat_detection_pipeline import ThreatDetectionPipeline
 
 
 

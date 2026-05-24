@@ -1,12 +1,12 @@
 import numpy as np
-from src.preprocessing.identification_resolver import IdentificationResolver
-from src.preprocessing.observation_builder import ObservationBuilder
-from src.preprocessing.feature_aggregator import FeatureAggregator
-from src.preprocessing.vectorizer import FeatureVectorizer
-from src.models.prediction import Prediction
-from src.training.trainer import Trainer
-from src.utils.pickler import Pickler
-from src.config.file_paths import BEST_MODEL_PATH, TRAINING_DATA_PATH, TESTING_DATA_PATH
+from src.IsolationForest.preprocessing.identification_resolver import IdentificationResolver
+from src.IsolationForest.preprocessing.observation_builder import ObservationBuilder
+from src.IsolationForest.preprocessing.feature_aggregator import FeatureAggregator
+from src.IsolationForest.preprocessing.vectorizer import FeatureVectorizer
+from src.IsolationForest.models.prediction import Prediction
+from src.IsolationForest.training.trainer import Trainer
+from src.IsolationForest.utils.pickler import Pickler
+from src.IsolationForest.config.file_paths import BEST_MODEL_PATH, TRAINING_DATA_PATH, TESTING_DATA_PATH
 
 class ThreatDetectionPipeline:
     """Orchestrates preprocessing, training, model loading and testing.

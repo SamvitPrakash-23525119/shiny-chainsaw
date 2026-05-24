@@ -1,6 +1,6 @@
 import numpy as np
-from src.utils.metrics import accuracy, precision, recall, f1
-from src.models.evaluation_result import EvaluationResult
+from src.IsolationForest.utils.metrics import accuracy, precision, recall, f1
+from src.IsolationForest.models.evaluation_result import EvaluationResult
 
 class Evaluator:
     """Evaluator for anomaly detection models.

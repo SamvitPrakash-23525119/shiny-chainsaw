@@ -1,11 +1,11 @@
 import random
 import numpy as np
 from .training_logger import TrainingLogger
-from src.evaluation.evaluator import Evaluator
-from src.detection.isolation_forest import IsolationForest
-from src.utils.pickler import Pickler
-from src.models.training_result import TrainingResult
-from src.config.file_paths import BEST_MODEL_PATH, TRAINING_LOG_PATH
+from src.IsolationForest.evaluation.evaluator import Evaluator
+from src.IsolationForest.detection.isolation_forest import IsolationForest
+from src.IsolationForest.utils.pickler import Pickler
+from src.IsolationForest.models.training_result import TrainingResult
+from src.IsolationForest.config.file_paths import BEST_MODEL_PATH, TRAINING_LOG_PATH
 
 class Trainer:
     """Train and select the best isolation forest model.

@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import ndarray
 from typing import List
 from dataclasses import dataclass, field
 from .observation import Observation
