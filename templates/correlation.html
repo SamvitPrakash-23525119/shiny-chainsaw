@@ -97,6 +97,7 @@ function renderHeatmap(data) {
   // Annotation text on each cell
   const textArr = z.map(row => row.map(v => v.toFixed(2)));
 
+  document.getElementById('heatmap').innerHTML = '';
   Plotly.react('heatmap', [{
     type: 'heatmap',
     z,

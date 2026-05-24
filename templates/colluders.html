@@ -165,6 +165,7 @@ function runSearch() {
       const rSafe = pairs.filter(p => !p.risk_flag).map(p => p.correlation);
       const rRisk = pairs.filter(p =>  p.risk_flag).map(p => p.correlation);
 
+      document.getElementById('dist-chart').innerHTML = '';
       Plotly.react('dist-chart', [
         { x: rSafe, name: 'Both Normal', type: 'histogram', nbinsx: 20,
           marker: { color: '#22c55e' }, opacity: 0.8 },

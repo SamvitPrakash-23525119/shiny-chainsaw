@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}Dataset{% endblock %}
+{% block page_title %}Dataset{% endblock %}
+{% block page_subtitle %}{{ active_dataset_name }} — {{ '{:,}'.format(n_rows) }} observations, {{ n_users }} users{% endblock %}
+
+{% block content %}
+<div class="content-area">
+
+  <!-- ── Current dataset stat row ──────────────────────────────────────── -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-indigo"><i class="bi bi-file-earmark-text-fill"></i></div>
+        <div>
+          <div class="stat-value">{{ '{:,}'.format(n_rows) }}</div>
+          <div class="stat-label">Raw Observations</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-blue"><i class="bi bi-layout-three-columns"></i></div>
+        <div>
+          <div class="stat-value">{{ n_cols }}</div>
+          <div class="stat-label">Columns</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-green"><i class="bi bi-people-fill"></i></div>
+        <div>
+          <div class="stat-value">{{ n_users }}</div>
+          <div class="stat-label">Unique Users</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="stat-icon si-red"><i class="bi bi-person-fill-exclamation"></i></div>
+        <div>
+          <div class="stat-value">{{ n_malicious }}</div>
+          <div class="stat-label">Malicious Users</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Upload section ────────────────────────────────────────────────── -->
+  <div class="panel-card mb-4">
+    <div class="panel-card-header">
+      <span class="panel-card-title">
+        <i class="bi bi-cloud-upload-fill me-2" style="color:var(--accent)"></i>Upload Custom CSV
+      </span>
+      <button class="bd bd-neutral" style="border:none;cursor:pointer;font-size:11.5px"
+              onclick="toggleSchema()" id="schema-toggle">
+        <i class="bi bi-list-columns me-1"></i>Show required columns
+      </button>
+    </div>
+
+    <!-- ── Schema guide (collapsible) ─────────────────────────────────── -->
+    <div id="schema-guide" style="display:none;border-bottom:1px solid var(--border)">
+      <div class="panel-card-body pb-0">
+        <div class="info-box blue mb-3">
+          <i class="bi bi-info-circle-fill"></i>
+          <div>
+            Your CSV must contain <strong>one row per observation</strong> (not one row per user).
+            Multiple rows sharing the same identity columns are automatically grouped into a single
+            user profile. <code>is_malicious</code> is the only optional column — if omitted,
+            all users are treated as unlabelled.
+          </div>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="tbl" style="font-size:12px">
+          <thead>
+            <tr>
+              <th>Column name</th>
+              <th>Type</th>
+              <th>Valid values</th>
+              <th>Description</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>employee_department</code></td><td><span class="bd bd-neutral">string</span></td><td>any text</td><td>Department name</td><td>Engineering Department</td></tr>
+            <tr><td><code>employee_campus</code></td><td><span class="bd bd-neutral">string</span></td><td>any text</td><td>Campus identifier</td><td>Campus A</td></tr>
+            <tr><td><code>employee_position</code></td><td><span class="bd bd-neutral">string</span></td><td>any text</td><td>Job title</td><td>Software Engineer</td></tr>
+            <tr><td><code>employee_seniority_years</code></td><td><span class="bd bd-indigo">int</span></td><td>≥ 0</td><td>Years at the organisation</td><td>5</td></tr>
+            <tr><td><code>is_contractor</code></td><td><span class="bd bd-blue">binary</span></td><td>0 or 1</td><td>External contractor flag</td><td>0</td></tr>
+            <tr><td><code>employee_classification</code></td><td><span class="bd bd-indigo">int</span></td><td>1 – 5</td><td>Security clearance level</td><td>2</td></tr>
+            <tr><td><code>has_foreign_citizenship</code></td><td><span class="bd bd-blue">binary</span></td><td>0 or 1</td><td>Holds foreign citizenship</td><td>0</td></tr>
+            <tr><td><code>has_criminal_record</code></td><td><span class="bd bd-blue">binary</span></td><td>0 or 1</td><td>Criminal history flag</td><td>0</td></tr>
+            <tr><td><code>has_medical_history</code></td><td><span class="bd bd-blue">binary</span></td><td>0 or 1</td><td>Medical history flag</td><td>0</td></tr>
+            <tr><td><code>employee_origin_country</code></td><td><span class="bd bd-neutral">string</span></td><td>any text</td><td>Country of origin</td><td>South Africa</td></tr>
+            <tr><td><code>total_printed_pages</code></td><td><span class="bd bd-indigo">int</span></td><td>≥ 0</td><td>Pages printed this period</td><td>10</td></tr>
+            <tr><td><code>num_printed_pages_off_hours</code></td><td><span class="bd bd-indigo">int</span></td><td>≥ 0</td><td>Pages printed outside work hours</td><td>2</td></tr>
+            <tr><td><code>total_files_burned</code></td><td><span class="bd bd-indigo">int</span></td><td>≥ 0</td><td>Files written to removable media</td><td>0</td></tr>
+            <tr><td><code>burned_from_other</code></td><td><span class="bd bd-indigo">int</span></td><td>≥ 0</td><td>Files from other users burned</td><td>0</td></tr>
+            <tr><td><code>is_abroad</code></td><td><span class="bd bd-blue">binary</span></td><td>0 or 1</td><td>Was abroad during this period</td><td>0</td></tr>
+            <tr><td><code>trip_day_number</code></td><td><span class="bd bd-success">float</span></td><td>≥ 0.0</td><td>Days spent on trip</td><td>0.0</td></tr>
+            <tr><td><code>hostility_country_level</code></td><td><span class="bd bd-indigo">int</span></td><td>0 – 5</td><td>Hostility rating of travel destination</td><td>0</td></tr>
+            <tr><td><code>num_entries</code></td><td><span class="bd bd-indigo">int</span></td><td>≥ 0</td><td>Badge access entries recorded</td><td>3</td></tr>
+            <tr><td><code>num_unique_campus</code></td><td><span class="bd bd-indigo">int</span></td><td>≥ 0</td><td>Number of distinct campuses visited</td><td>1</td></tr>
+            <tr><td><code>late_exit_flag</code></td><td><span class="bd bd-blue">binary</span></td><td>0 or 1</td><td>Exited building after hours</td><td>0</td></tr>
+            <tr><td><code>entry_during_weekend</code></td><td><span class="bd bd-blue">binary</span></td><td>0 or 1</td><td>Entered building on a weekend</td><td>0</td></tr>
+            <tr style="background:#f0fdf4">
+              <td><code>is_malicious</code></td>
+              <td><span class="bd bd-blue">binary</span></td>
+              <td>0 or 1</td>
+              <td>
+                Ground truth threat label
+                <span class="bd bd-success ms-1" style="font-size:10px">optional</span>
+              </td>
+              <td>0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div><!-- #schema-guide -->
+
+    <!-- ── Drop zone ──────────────────────────────────────────────────── -->
+    <div class="panel-card-body">
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('csv-input').click()">
+        <input type="file" id="csv-input" accept=".csv" style="display:none" />
+        <div id="dz-idle">
+          <i class="bi bi-cloud-arrow-up" style="font-size:36px;color:var(--accent);margin-bottom:10px;display:block"></i>
+          <div style="font-weight:600;font-size:15px;margin-bottom:6px">Drag & drop a CSV file here</div>
+          <div style="font-size:13px;color:var(--muted)">or click to browse</div>
+        </div>
+        <div id="dz-file" style="display:none">
+          <i class="bi bi-file-earmark-check-fill" style="font-size:36px;color:var(--success);margin-bottom:10px;display:block"></i>
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px" id="dz-filename">—</div>
+          <div style="font-size:13px;color:var(--muted)" id="dz-filesize">—</div>
+        </div>
+      </div>
+
+      <!-- Upload button + result -->
+      <div class="d-flex align-items-center gap-3 mt-3">
+        <button id="upload-btn" class="btn btn-sm px-4 py-2" disabled
+                style="background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:500;font-size:13.5px"
+                onclick="uploadCSV()">
+          <i class="bi bi-cpu-fill me-2"></i>Upload &amp; Analyse
+        </button>
+        <button id="clear-btn" class="btn btn-sm btn-outline-secondary" style="font-size:13px;display:none"
+                onclick="clearFile()">Clear</button>
+        <div id="upload-status"></div>
+      </div>
+    </div>
+  </div><!-- upload panel-card -->
+
+  <!-- ── Column schema + feature distribution ──────────────────────────── -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-5">
+      <div class="panel-card h-100">
+        <div class="panel-card-header">
+          <span class="panel-card-title"><i class="bi bi-layout-three-columns me-2" style="color:var(--accent)"></i>Active Column Schema</span>
+          <span class="bd bd-neutral">{{ n_cols }} columns</span>
+        </div>
+        <div style="overflow-y:auto;max-height:480px">
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Column</th><th>Type</th><th>Nulls</th></tr></thead>
+            <tbody>
+              {% for col in columns %}
+              <tr>
+                <td><span class="bd bd-neutral">{{ loop.index }}</span></td>
+                <td style="font-family:monospace;font-size:11.5px">{{ col.name }}</td>
+                <td>
+                  {% if 'float' in col.dtype %}<span class="bd bd-success">float</span>
+                  {% elif 'int' in col.dtype  %}<span class="bd bd-indigo">int</span>
+                  {% else %}<span class="bd bd-neutral">{{ col.dtype }}</span>{% endif %}
+                </td>
+                <td>
+                  {% if col.nulls == 0 %}<span class="bd bd-success">0</span>
+                  {% else %}<span class="bd bd-danger">{{ col.nulls }}</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="panel-card h-100">
+        <div class="panel-card-header">
+          <span class="panel-card-title"><i class="bi bi-bar-chart-fill me-2" style="color:var(--accent)"></i>Feature Distribution</span>
+          <select id="feat-select" class="form-select form-select-sm" style="width:auto">
+            <option value="risk_score">Risk Score</option>
+            <option value="avg_files_burned">Avg Files Burned</option>
+            <option value="avg_off_hours_print_ratio">Off-hours Print Ratio</option>
+            <option value="avg_num_entries">Avg Access Entries</option>
+            <option value="late_exit_ratio">Late Exit Ratio</option>
+            <option value="weekend_entry_ratio">Weekend Entry Ratio</option>
+            <option value="abroad_ratio">Abroad Ratio</option>
+            <option value="avg_hostility_country_level">Hostility Level</option>
+            <option value="avg_trip_duration">Avg Trip Duration</option>
+          </select>
+        </div>
+        <div class="panel-card-body p-0">
+          <div id="feat-chart" class="chart-wrap" style="min-height:430px">
+            <div class="chart-loading"><div class="spinner-border spinner-border-sm"></div>&nbsp;Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sample observations ─────────────────────────────────────────────── -->
+  <div class="panel-card">
+    <div class="panel-card-header">
+      <span class="panel-card-title"><i class="bi bi-table me-2" style="color:var(--accent)"></i>Sample Observations (first 4)</span>
+      <span class="bd bd-neutral">Raw CSV data</span>
+    </div>
+    <div class="panel-card-body">
+      <div class="row g-3">
+        {% for row in sample %}
+        <div class="col-md-6">
+          <div class="sample-card">
+            <div class="sample-card-header">
+              <span>Observation {{ loop.index }}</span>
+              {% if 'is_malicious' in row %}
+                {% if row['is_malicious'] %}
+                  <span class="bd bd-danger">Malicious</span>
+                {% else %}
+                  <span class="bd bd-success">Normal</span>
+                {% endif %}
+              {% endif %}
+            </div>
+            <div class="kv-grid">
+              {% for col in columns %}
+              <div class="kv">
+                <span class="kv-key">{{ col.name }}</span>
+                <span class="kv-val">{{ row[col.name] }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div><!-- .content-area -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PLOTLY_CFG = { responsive: true, displayModeBar: false };
+const FONT       = { family: 'Inter, sans-serif', size: 12 };
+
+// ── Feature distribution chart ────────────────────────────────────────────
+let statsCache = null;
+
+function drawFeature(key) {
+  const d = statsCache[key];
+  document.getElementById('feat-chart').innerHTML = '';
+  Plotly.react('feat-chart', [
+    { x: d.values_normal,    name: 'Normal',    type: 'histogram', nbinsx: 30, opacity: 0.75, marker: { color: '#22c55e' } },
+    { x: d.values_malicious, name: 'Malicious', type: 'histogram', nbinsx: 30, opacity: 0.8,  marker: { color: '#ef4444' } },
+  ], {
+    barmode: 'overlay',
+    xaxis: { title: { text: d.label, font: FONT } },
+    yaxis: { title: { text: 'Users', font: FONT } },
+    legend: { x: 0.72, y: 0.97 },
+    annotations: [{ xref:'paper', yref:'paper', x:0.01, y:0.97, showarrow:false,
+      text:`mean=${d.mean}  std=${d.std}`, font:{size:11,color:'#64748b'}, align:'left' }],
+    margin: { t:16, r:20, b:50, l:56 },
+    plot_bgcolor:'#fafafa', paper_bgcolor:'#fff', font: FONT, height: 450,
+  }, PLOTLY_CFG);
+}
+
+fetch('/api/dataset-stats')
+  .then(r => r.json())
+  .then(data => {
+    statsCache = data;
+    drawFeature(document.getElementById('feat-select').value);
+  });
+
+document.getElementById('feat-select').addEventListener('change', e => {
+  if (statsCache) drawFeature(e.target.value);
+});
+
+// ── Schema guide toggle ───────────────────────────────────────────────────
+function toggleSchema() {
+  const el  = document.getElementById('schema-guide');
+  const btn = document.getElementById('schema-toggle');
+  const open = el.style.display === 'none';
+  el.style.display  = open ? 'block' : 'none';
+  btn.innerHTML     = open
+    ? '<i class="bi bi-x-circle me-1"></i>Hide required columns'
+    : '<i class="bi bi-list-columns me-1"></i>Show required columns';
+}
+
+// ── Drag & drop + file picker ─────────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+const csvInput = document.getElementById('csv-input');
+let selectedFile = null;
+
+function showFile(file) {
+  selectedFile = file;
+  document.getElementById('dz-idle').style.display     = 'none';
+  document.getElementById('dz-file').style.display     = 'block';
+  document.getElementById('dz-filename').textContent   = file.name;
+  document.getElementById('dz-filesize').textContent   = (file.size / 1024).toFixed(1) + ' KB';
+  dropZone.classList.add('has-file');
+  document.getElementById('upload-btn').disabled = false;
+  document.getElementById('clear-btn').style.display = '';
+  document.getElementById('upload-status').innerHTML = '';
+}
+
+function clearFile() {
+  selectedFile = null;
+  csvInput.value = '';
+  document.getElementById('dz-idle').style.display = 'block';
+  document.getElementById('dz-file').style.display = 'none';
+  dropZone.classList.remove('has-file');
+  document.getElementById('upload-btn').disabled = true;
+  document.getElementById('clear-btn').style.display = 'none';
+  document.getElementById('upload-status').innerHTML = '';
+}
+
+csvInput.addEventListener('change', () => {
+  if (csvInput.files[0]) showFile(csvInput.files[0]);
+});
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.name.toLowerCase().endsWith('.csv')) showFile(f);
+  else setStatus('error', 'Only .csv files are accepted.');
+});
+
+// ── Upload & analyse ──────────────────────────────────────────────────────
+function uploadCSV() {
+  if (!selectedFile) return;
+
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner-border spinner-border-sm me-2" style="width:14px;height:14px;border-width:2px"></div>Analysing…';
+  setStatus('info', 'Uploading and training model — this may take a few seconds…');
+
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+
+  fetch('/api/upload-csv', { method: 'POST', body: fd })
+    .then(r => {
+      const ct = r.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        // Server returned HTML (debug page or 500) — surface a useful message
+        return r.text().then(t => {
+          throw new Error(`Server error (HTTP ${r.status}) — check Flask console for details.`);
+        });
+      }
+      return r.json();
+    })
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-cpu-fill me-2"></i>Upload &amp; Analyse';
+
+      if (data.error) {
+        let msg = data.error;
+        if (data.missing_columns) {
+          msg += '<br><span style="font-size:11px">Missing: <code>' +
+                 data.missing_columns.join(', ') + '</code></span>';
+        }
+        setStatus('error', msg);
+      } else {
+        setStatus('success',
+          `<strong>${data.filename}</strong> loaded —
+           ${data.n_users} users · ${data.n_obs.toLocaleString()} observations ·
+           ${data.malicious_rate}% malicious rate.
+           Reloading page…`);
+        setTimeout(() => window.location.reload(), 1800);
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-cpu-fill me-2"></i>Upload &amp; Analyse';
+      setStatus('error', 'Network error: ' + err.message);
+    });
+}
+
+function setStatus(type, html) {
+  const colors = {
+    success: { bg:'#dcfce7', color:'#166534', icon:'bi-check-circle-fill' },
+    error:   { bg:'#fee2e2', color:'#991b1b', icon:'bi-x-circle-fill'    },
+    info:    { bg:'#dbeafe', color:'#1e40af', icon:'bi-info-circle-fill'  },
+  };
+  const c = colors[type];
+  document.getElementById('upload-status').innerHTML =
+    `<div style="background:${c.bg};color:${c.color};padding:8px 14px;border-radius:8px;
+                 font-size:13px;display:flex;align-items:center;gap:8px">
+       <i class="bi ${c.icon}" style="flex-shrink:0"></i><div>${html}</div>
+     </div>`;
+}
+</script>
+{% endblock %}

@@ -100,6 +100,8 @@ fetch('/api/anomaly-correlation')
     const rVals  = data.map(d => d.pearson_r);
     const colors = data.map(d => d.significant ? '#6366f1' : '#94a3b8');
 
+    document.getElementById('bar-chart').innerHTML = '';   // clear spinner
+
     Plotly.newPlot('bar-chart', [{
       type: 'bar',
       x: rVals,
@@ -146,6 +148,7 @@ fetch('/api/anomaly-correlation')
 fetch('/api/anomaly-scores')
   .then(r => r.json())
   .then(d => {
+    document.getElementById('scatter-chart').innerHTML = '';  // clear spinner
     const normal = {
       x: d.risk_scores.filter((_,i) => !d.is_malicious[i]),
       y: d.scores.filter((_,i)      => !d.is_malicious[i]),

@@ -194,6 +194,7 @@ fetch('/api/anomaly-scores')
     const normal    = d.scores.filter((_,i) => !d.is_malicious[i]);
     const malicious = d.scores.filter((_,i) =>  d.is_malicious[i]);
 
+    document.getElementById('dist-chart').innerHTML = '';
     Plotly.newPlot('dist-chart', [
       { x: normal,    name: 'Normal',    type: 'histogram', nbinsx: 40,
         opacity: 0.8, marker: { color: '#22c55e' } },

@@ -49,12 +49,12 @@
       <div class="sidebar-section-label mt-2">Info</div>
       <ul class="sidebar-nav">
         <li>
-          <a href="#" class="sidebar-link">
+          <a href="/dataset" class="sidebar-link {% if active=='dataset' %}active{% endif %}">
             <i class="bi bi-database-fill"></i><span>Dataset</span>
           </a>
         </li>
         <li>
-          <a href="#" class="sidebar-link">
+          <a href="/model" class="sidebar-link {% if active=='model' %}active{% endif %}">
             <i class="bi bi-cpu-fill"></i><span>Model</span>
           </a>
         </li>
@@ -82,8 +82,34 @@
         </div>
       </div>
 
+      <!-- ── Active dataset banner ──────────────────────────────── -->
+      {% if is_custom_dataset %}
+      <div class="dataset-banner dataset-banner--custom">
+        <i class="bi bi-database-fill me-2"></i>
+        Analysing custom dataset: <strong class="ms-1">{{ active_dataset_name }}</strong>
+        <button class="btn-reset-ds ms-auto" onclick="resetDataset()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Reset to default
+        </button>
+      </div>
+      {% else %}
+      <div class="dataset-banner dataset-banner--default">
+        <i class="bi bi-database me-2"></i>
+        Default dataset: <strong class="ms-1">{{ active_dataset_name }}</strong>
+        <a href="/dataset" class="ms-auto" style="font-size:11.5px;color:inherit;opacity:0.65;text-decoration:none">
+          Upload custom CSV <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+      </div>
+      {% endif %}
+
       {% block content %}{% endblock %}
     </main>
+
+    <script>
+    function resetDataset() {
+      fetch('/api/reset-dataset', { method: 'POST' })
+        .then(() => window.location.reload());
+    }
+    </script>
 
   </div><!-- .app-layout -->
 

@@ -60,6 +60,10 @@ class CorrelationAnalyzer:
     def __init__(self, data_path: str):
         self.data_path = str(data_path)
         self.df_raw = pd.read_csv(data_path)
+        # is_malicious is optional — if absent (e.g. real investigation data),
+        # default every user to 0 so all charts still render correctly.
+        if 'is_malicious' not in self.df_raw.columns:
+            self.df_raw['is_malicious'] = 0
         self.df_users = self._aggregate_users()
         self.anomaly_scores = self._compute_anomaly_scores()
 

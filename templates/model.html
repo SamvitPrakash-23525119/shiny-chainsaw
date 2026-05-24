@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Model{% endblock %}
+{% block page_title %}Model{% endblock %}
+{% block page_subtitle %}Isolation Forest configuration, anomaly score statistics, and training history{% endblock %}
+
+{% block content %}
+<div class="content-area">
+
+  <!-- ── Runtime config (loaded from /api/model-info) ─────────────────── -->
+  <div id="model-cards" class="row g-3 mb-4">
+    <div class="col-12 text-center py-4" style="color:var(--muted)">
+      <div class="spinner-border spinner-border-sm me-2"></div>Loading model info…
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+
+    <!-- sklearn IsolationForest config -->
+    <div class="col-lg-5">
+      <div class="panel-card h-100">
+        <div class="panel-card-header">
+          <span class="panel-card-title"><i class="bi bi-gear-fill me-2" style="color:var(--accent)"></i>sklearn IsolationForest Config</span>
+          <span class="bd bd-indigo">Active model</span>
+        </div>
+        <div class="panel-card-body">
+          <div class="info-box indigo mb-3">
+            <i class="bi bi-info-circle-fill"></i>
+            <div>This is the IsolationForest instance trained at startup by
+            <code>CorrelationAnalyzer</code>. It scores every user in the dataset
+            and its output drives all four analysis pages.</div>
+          </div>
+          <table class="tbl">
+            <thead><tr><th>Parameter</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>n_estimators</td><td><span class="bd bd-indigo">200</span></td></tr>
+              <tr><td>contamination</td><td><span class="bd bd-amber">0.05  (5%)</span></td></tr>
+              <tr><td>max_samples</td><td><span class="bd bd-neutral">'auto'</span></td></tr>
+              <tr><td>random_state</td><td><span class="bd bd-neutral">42</span></td></tr>
+              <tr><td>feature scaler</td><td><span class="bd bd-blue">StandardScaler</span></td></tr>
+              <tr><td>input features</td><td><span class="bd bd-indigo">17</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pre-trained model files -->
+    <div class="col-lg-7">
+      <div class="panel-card h-100">
+        <div class="panel-card-header">
+          <span class="panel-card-title"><i class="bi bi-archive-fill me-2" style="color:var(--accent)"></i>Pre-trained Pickle Files</span>
+          <span class="bd bd-neutral">models/</span>
+        </div>
+        {% if model_files %}
+        <table class="tbl">
+          <thead><tr><th>Model</th><th>File</th><th>Size</th><th>Type</th></tr></thead>
+          <tbody>
+            {% for m in model_files %}
+            <tr>
+              <td style="font-weight:600">{{ m.name }}</td>
+              <td><code style="font-size:11px">{{ m.file }}</code></td>
+              <td><span class="bd bd-neutral">{{ m.size_kb }} KB</span></td>
+              <td><span class="bd bd-indigo">Custom IF</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="panel-card-body" style="color:var(--muted)">No .pkl files found in models/</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Anomaly score distribution ────────────────────────────────────── -->
+  <div class="panel-card mb-4">
+    <div class="panel-card-header">
+      <span class="panel-card-title"><i class="bi bi-bar-chart-fill me-2" style="color:var(--accent)"></i>Anomaly Score Distribution</span>
+      <span style="font-size:12px;color:var(--muted)">Scores produced by the active sklearn IsolationForest</span>
+    </div>
+    <div class="panel-card-body p-0">
+      <div id="score-chart" class="chart-wrap" style="min-height:320px">
+        <div class="chart-loading"><div class="spinner-border spinner-border-sm"></div>&nbsp;Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Custom IF training log ─────────────────────────────────────────── -->
+  {% if log_entries %}
+  <div class="panel-card">
+    <div class="panel-card-header">
+      <span class="panel-card-title"><i class="bi bi-clock-history me-2" style="color:var(--accent)"></i>Custom IsolationForest — Last {{ log_entries|length }} Training Runs</span>
+      <span class="bd bd-neutral">logs/training_log.jsonl</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl" style="font-size:12px">
+        <thead>
+          <tr>
+            <th>Iter</th>
+            <th>n_trees</th>
+            <th>Sample size</th>
+            <th>Threshold %</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1</th>
+            <th>Accuracy</th>
+            <th>TP / FP / FN</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in log_entries | reverse %}
+          {% set em = e.evaluation_metrics %}
+          <tr>
+            <td><span class="bd bd-neutral">{{ e.iteration }}</span></td>
+            <td>{{ e.n_trees }}</td>
+            <td>{{ e.sampling_size }}</td>
+            <td>{{ e.threshold }}</td>
+            <td>
+              {% set p = em.precision | round(3) %}
+              <span class="bd {% if p > 0.7 %}bd-success{% elif p > 0.4 %}bd-warning{% else %}bd-danger{% endif %}">{{ p }}</span>
+            </td>
+            <td>
+              {% set r = em.recall | round(3) %}
+              <span class="bd {% if r > 0.5 %}bd-success{% elif r > 0.2 %}bd-warning{% else %}bd-danger{% endif %}">{{ r }}</span>
+            </td>
+            <td>{{ em.f1_score | round(3) }}</td>
+            <td>{{ em.accuracy | round(3) }}</td>
+            <td style="font-family:monospace;font-size:11px">
+              {{ em.tp }}&nbsp;/&nbsp;{{ em.fp }}&nbsp;/&nbsp;{{ em.fn }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PLOTLY_CFG = { responsive: true, displayModeBar: false };
+const FONT       = { family: 'Inter, sans-serif', size: 12 };
+
+// ── Stat cards ────────────────────────────────────────────────────────────
+fetch('/api/model-info')
+  .then(r => r.json())
+  .then(d => {
+    const ss = d.score_stats;
+    document.getElementById('model-cards').innerHTML = `
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon si-indigo"><i class="bi bi-people-fill"></i></div>
+          <div><div class="stat-value">${d.n_users}</div><div class="stat-label">Users Scored</div></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon si-red"><i class="bi bi-person-fill-exclamation"></i></div>
+          <div><div class="stat-value">${d.n_malicious}</div><div class="stat-label">Malicious Flagged</div></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon si-amber"><i class="bi bi-graph-up-arrow"></i></div>
+          <div><div class="stat-value">${ss.max}</div><div class="stat-label">Max Anomaly Score</div></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon si-green"><i class="bi bi-activity"></i></div>
+          <div><div class="stat-value">${ss.mean}</div><div class="stat-label">Mean Anomaly Score</div></div>
+        </div>
+      </div>`;
+  });
+
+// ── Score distribution chart ──────────────────────────────────────────────
+fetch('/api/anomaly-scores')
+  .then(r => r.json())
+  .then(d => {
+    const normal    = d.scores.filter((_,i) => !d.is_malicious[i]);
+    const malicious = d.scores.filter((_,i) =>  d.is_malicious[i]);
+
+    Plotly.newPlot('score-chart', [
+      { x: normal,    name: 'Normal',    type: 'histogram', nbinsx: 40,
+        opacity: 0.8, marker: { color: '#22c55e' } },
+      { x: malicious, name: 'Malicious', type: 'histogram', nbinsx: 40,
+        opacity: 0.85,marker: { color: '#ef4444' } },
+    ], {
+      barmode: 'overlay',
+      xaxis: { title: { text: 'Anomaly Score  (higher = more anomalous)', font: FONT } },
+      yaxis: { title: { text: 'Number of Users', font: FONT } },
+      legend: { x: 0.72, y: 0.97 },
+      margin: { t: 16, r: 20, b: 50, l: 56 },
+      plot_bgcolor: '#fafafa', paper_bgcolor: '#fff', font: FONT, height: 340,
+    }, PLOTLY_CFG);
+  });
+</script>
+
+<style>
+  .bd-amber { background: #fef3c7; color: #92400e; }
+</style>
+{% endblock %}

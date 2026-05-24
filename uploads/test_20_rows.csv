@@ -1,0 +1,21 @@
+employee_department,employee_campus,employee_position,employee_seniority_years,is_contractor,employee_classification,has_foreign_citizenship,has_criminal_record,has_medical_history,employee_origin_country,total_printed_pages,num_printed_pages_off_hours,total_files_burned,burned_from_other,is_abroad,trip_day_number,hostility_country_level,num_entries,num_unique_campus,late_exit_flag,entry_during_weekend
+IT Department,Campus B,Engineer,3,1,2,1,0,0,United States,80,15,50,10,1,5,4,45,3,1,1
+Finance Department,Campus A,Analyst,2,1,2,0,1,0,United States,120,20,80,15,0,0,0,60,2,0,1
+Research Department,Campus C,Engineer,5,0,3,1,0,0,China,60,10,40,8,1,3,5,30,2,1,1
+IT Department,Campus A,Director,8,0,3,0,1,0,United States,200,18,60,12,0,0,0,80,1,1,1
+Finance Department,Campus B,Analyst,1,1,1,0,1,0,United States,150,25,100,20,1,7,5,50,3,0,1
+Finance Department,Campus A,Manager,4,0,2,1,0,0,Russia,90,12,35,6,1,4,3,40,4,0,1
+IT Department,Campus C,Technician,2,1,1,0,1,1,United States,50,8,45,9,0,0,0,35,2,0,1
+Engineering Department,Campus B,Engineer,1,1,2,1,1,0,Iran,180,22,90,18,1,6,5,70,3,1,1
+Engineering Department,Campus A,Engineer,3,0,2,1,0,0,Germany,30,5,15,2,1,2,2,20,1,0,0
+IT Department,Campus B,Analyst,4,0,2,0,0,1,United States,45,4,20,3,0,0,0,25,2,1,1
+Engineering Department,Campus A,Engineer,5,0,2,0,0,0,United States,30,0,2,0,0,0,0,22,1,0,0
+HR Department,Campus A,Analyst,7,0,1,0,0,0,United States,20,1,0,0,0,0,0,18,1,0,0
+Finance Department,Campus B,Manager,10,0,2,0,0,0,United States,50,0,5,0,0,0,0,30,1,0,0
+Research Department,Campus A,Director,15,0,3,0,0,0,United States,40,0,0,0,0,0,0,25,1,0,0
+HR Department,Campus A,Engineer,3,0,1,0,0,1,United States,35,2,0,0,0,0,0,20,1,0,0
+Engineering Department,Campus C,Technician,6,0,2,0,0,0,United States,25,0,3,0,0,0,0,15,1,0,0
+IT Department,Campus A,Engineer,4,0,2,0,0,0,United Kingdom,15,0,0,0,0,0,0,28,1,0,0
+Finance Department,Campus B,Analyst,2,0,1,1,0,0,France,10,0,0,0,0,0,0,12,1,0,0
+Research Department,Campus A,Engineer,8,0,2,0,0,0,United States,20,0,0,0,1,3,1,10,1,0,0
+Engineering Department,Campus A,Manager,12,0,3,0,0,0,United States,45,1,0,0,0,0,0,35,2,0,0
