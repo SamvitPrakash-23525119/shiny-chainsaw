@@ -1,5 +1,5 @@
-from src.models.observation import Observation
-from src.utils.csv_loader import load
+from src.IsolationForest.models.observation import Observation
+from src.IsolationForest.utils.csv_loader import load
 
 
 class ObservationBuilder:

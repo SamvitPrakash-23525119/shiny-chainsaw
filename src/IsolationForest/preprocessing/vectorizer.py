@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.models.aggregated_features import AggregatedFeatures
+from src.IsolationForest.models.aggregated_features import AggregatedFeatures
 
 
 class FeatureVectorizer:

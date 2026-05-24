@@ -1,7 +1,7 @@
 from typing import List, Dict
-from src.models.observation import Observation
-from src.models.identity_signature import IdentitySignature
-from src.models.user_entity import UserEntity
+from src.IsolationForest.models.observation import Observation
+from src.IsolationForest.models.identity_signature import IdentitySignature
+from src.IsolationForest.models.user_entity import UserEntity
 
 
 class IdentificationResolver:
